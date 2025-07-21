@@ -28,58 +28,51 @@ def get_network_graph_data():
                 seen_edges.add(edge_tuple)
     return jsonify({"nodes": nodes, "edges": edges})
 
-# --- NEW: Endpoints for PO-5 ---
-
 @app.route("/api/nodes")
 def get_node_names():
     """Returns a sorted list of all node names."""
-    if not network.nodes:
-        return jsonify([])
-    node_names = sorted([node.name for node in network.nodes.values()])
-    return jsonify(node_names)
+    if not network.nodes: return jsonify([])
+    return jsonify(sorted([node.name for node in network.nodes.values()]))
 
 @app.route("/api/network/path", methods=['POST'])
 def find_path():
     """Calculates the fastest path between two nodes."""
     data = request.get_json()
-    from_node = network.get_node_by_name(data.get("from_node"))
-    to_node = network.get_node_by_name(data.get("to_node"))
-
-    if not from_node or not to_node:
-        return jsonify({"error": "One or both nodes not found"}), 404
-    
+    from_node, to_node = network.get_node_by_name(data.get("from_node")), network.get_node_by_name(data.get("to_node"))
+    if not from_node or not to_node: return jsonify({"error": "Nodes not found"}), 404
     path, latency = network.find_shortest_path(from_node.id, to_node.id)
-    
-    if path:
-        path_names = [node.name for node in path]
-        return jsonify({"path": path_names, "latency": latency})
-    else:
-        return jsonify({"error": "No path found"}), 404
+    if path: return jsonify({"path": [n.name for n in path], "latency": latency})
+    return jsonify({"error": "No path found"}), 404
 
 @app.route("/api/network/route", methods=['POST'])
 def route_message():
     """Routes a message between two nodes."""
     data = request.get_json()
-    from_node = network.get_node_by_name(data.get("from_node"))
-    to_node = network.get_node_by_name(data.get("to_node"))
+    from_node, to_node = network.get_node_by_name(data.get("from_node")), network.get_node_by_name(data.get("to_node"))
     payload = data.get("payload", "")
-
-    if not from_node or not to_node:
-        return jsonify({"error": "One or both nodes not found"}), 404
-    
+    if not from_node or not to_node: return jsonify({"error": "Nodes not found"}), 404
     message = Message(from_node.id, to_node.id, payload)
-    success = network.route_message(message)
-    
-    if success:
-        return jsonify({"success": True, "message": "Message routed successfully."})
-    else:
-        return jsonify({"success": False, "message": "Routing failed. No path available."}), 400
+    if network.route_message(message): return jsonify({"success": True, "message": "Message routed successfully."})
+    return jsonify({"success": False, "message": "Routing failed. No path available."}), 400
 
-# --- (Existing node status control endpoints are unchanged) ---
+# --- NEW: Endpoint for PO-6 ---
+@app.route("/api/events")
+def get_events():
+    """Returns the 10 most recent simulation events."""
+    # Return events in reverse chronological order (newest first)
+    recent_events = reversed(network_reporter.log_entries[-10:])
+    return jsonify(list(recent_events))
+
 @app.route("/api/node/<node_name>/offline", methods=['POST'])
 def take_node_offline(node_name):
     node = network.get_node_by_name(node_name)
     if not node: return jsonify({"error": "Node not found"}), 404
+    # --- NEW: Manually log this event since it doesn't involve routing ---
+    network_reporter.log_entries.append({
+        "timestamp": Reporter.get_timestamp(),
+        "event_type": "STATUS_CHANGE",
+        "details": f"Node '{node.name}' taken OFFLINE."
+    })
     node.take_offline()
     return jsonify({"success": True, "status": "offline"})
 
@@ -87,6 +80,12 @@ def take_node_offline(node_name):
 def bring_node_online(node_name):
     node = network.get_node_by_name(node_name)
     if not node: return jsonify({"error": "Node not found"}), 404
+    # --- NEW: Manually log this event ---
+    network_reporter.log_entries.append({
+        "timestamp": Reporter.get_timestamp(),
+        "event_type": "STATUS_CHANGE",
+        "details": f"Node '{node.name}' brought ONLINE."
+    })
     node.bring_online()
     return jsonify({"success": True, "status": "online"})
 

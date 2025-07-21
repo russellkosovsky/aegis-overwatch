@@ -11,10 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const findPathBtn = document.getElementById('find-path-btn');
     const routeMsgBtn = document.getElementById('route-msg-btn');
     const resultsDisplay = document.getElementById('results-display');
+    const eventLog = document.getElementById('event-log');
 
     let network = null; // This will hold our Vis.js network instance
 
-    // --- Graph Configuration (Restored) ---
+    // --- Graph Configuration ---
     const options = {
         nodes: {
             shape: 'dot',
@@ -63,6 +64,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 edges: new vis.DataSet(data.edges),
             };
             network = new vis.Network(graphContainer, visData, options);
+
+            // Add click listener only once when the network is created
+            network.on("click", async (params) => {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    const node = network.body.data.nodes.get(nodeId);
+                    const action = node.color === '#f87171' ? 'online' : 'offline'; // If red, action is 'online'
+                    
+                    try {
+                        await fetch(`/api/node/${node.label}/${action}`, { method: 'POST' });
+                        fetchGraphData(); // Refresh graph
+                        fetchEventLog(); // Refresh log
+                    } catch(error) {
+                        console.error(`Failed to set node ${node.label} to ${action}:`, error);
+                    }
+                }
+            });
         } else {
             network.setData({
                 nodes: data.nodes,
@@ -98,6 +116,48 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsDisplay.className = isError 
             ? 'mt-4 p-4 bg-red-900/50 rounded-md min-h-[100px] text-red-300 whitespace-pre-wrap'
             : 'mt-4 p-4 bg-gray-900 rounded-md min-h-[100px] text-green-300 whitespace-pre-wrap';
+    }
+
+    async function fetchEventLog() {
+        try {
+            const response = await fetch('/api/events');
+            if (!response.ok) throw new Error('Failed to fetch event log');
+            const events = await response.json();
+            renderEventLog(events);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function renderEventLog(events) {
+        eventLog.innerHTML = '';
+        if (events.length === 0) {
+            eventLog.innerHTML = '<p class="text-gray-500">No events yet...</p>';
+            return;
+        }
+        events.forEach(event => {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'text-xs p-2 rounded';
+            let statusIndicator = '';
+
+            if (event.status === 'SUCCESS') {
+                logEntry.classList.add('bg-green-900/50', 'text-green-300');
+                statusIndicator = '✅';
+            } else if (event.status === 'FAILED') {
+                logEntry.classList.add('bg-red-900/50', 'text-red-300');
+                statusIndicator = '❌';
+            } else {
+                logEntry.classList.add('bg-blue-900/50', 'text-blue-300');
+                statusIndicator = 'ℹ️';
+            }
+
+            logEntry.innerHTML = `
+                <span class="font-mono">${event.timestamp}</span>
+                <span class="font-bold mx-2">${statusIndicator}</span>
+                <span>${event.details}</span>
+            `;
+            eventLog.appendChild(logEntry);
+        });
     }
 
     // --- Event Listeners for Controls ---
@@ -142,6 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(result.message || 'Routing failed');
             
             displayResult(result.message);
+            fetchEventLog(); // Refresh log after action
         } catch (error) {
             displayResult(`Error: ${error.message}`, true);
         }
@@ -151,7 +212,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function initialize() {
         fetchGraphData();
         populateNodeSelectors();
-        setInterval(fetchGraphData, 3000); // Polling for graph updates
+        fetchEventLog();
+        // Update both graph and log every 3 seconds
+        setInterval(() => {
+            fetchGraphData();
+            fetchEventLog();
+        }, 3000);
     }
 
     initialize();
