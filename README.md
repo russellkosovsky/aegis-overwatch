@@ -4,7 +4,6 @@
 
 This project demonstrates a full software development lifecycle, from backend logic and API design to a responsive, user-friendly frontend interface.
 
-**(Suggestion: Record a short GIF of you interacting with the dashboard \- clicking nodes, routing messages \- and embed it here. It's a fantastic way to showcase the project's functionality.)**
 
 ## **Core Features**
 
