@@ -1,0 +1,74 @@
+# --- Python ---
+
+# Virtual Environment
+# Never commit your virtual environment folder.
+venv/
+env/
+*.env
+
+# Compiled Python files and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Flask ---
+
+# Instance folder
+# This can contain sensitive configuration or a temporary database.
+instance/
+
+# --- Testing ---
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# --- IDE / Editor ---
+
+# Visual Studio Code
+.vscode/
+
+# JetBrains (PyCharm, etc.)
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# --- macOS ---
+
+# General macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- Generated Output (from Project Aegis) ---
+
+# All generated reports and visualizations
+output/
+
+
