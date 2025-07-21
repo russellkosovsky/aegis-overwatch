@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setInterval(() => {
             fetchGraphData();
             fetchEventLog();
-        }, 3000);
+        }, 60000);
     }
 
     initialize();
