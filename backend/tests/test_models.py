@@ -4,12 +4,14 @@ import yaml
 import pytest
 from aegis_simulator.models import Node, Message, Network
 
+
 def test_node_creation():
     node1 = Node(name="Ground Station Alpha")
     assert node1.name == "Ground Station Alpha"
     assert node1.id is not None
     assert len(node1.neighbors) == 0
     assert node1.is_active is True
+
 
 def test_add_neighbor_is_bilateral():
     node1 = Node(name="Command Center")
@@ -20,12 +22,14 @@ def test_add_neighbor_is_bilateral():
     assert node1 in node2.neighbors
     assert node2.neighbors[node1] == 20
 
+
 def test_network_add_node():
     network = Network()
     node = Node("Test Node")
     network.add_node(node)
     assert len(network.nodes) == 1
     assert network.get_node(node.id) == node
+
 
 def test_send_direct_message_success():
     network = Network()
@@ -36,23 +40,29 @@ def test_send_direct_message_success():
     message = Message(source_id=node_a.id, destination_id=node_b.id, payload="Hello")
     assert network.send_direct_message(message) is True
 
+
 def test_send_direct_message_failure_not_neighbors():
     network = Network()
     node_a, node_b = Node("A"), Node("B")
     network.add_node(node_a)
     network.add_node(node_b)
-    message = Message(source_id=node_a.id, destination_id=node_b.id, payload="This should fail")
+    message = Message(
+        source_id=node_a.id, destination_id=node_b.id, payload="This should fail"
+    )
     assert network.send_direct_message(message) is False
+
 
 def test_node_receives_correct_message():
     node_a = Node("Receiver Node")
     message = Message(source_id="other", destination_id=node_a.id, payload="Test")
     assert node_a.receive_message(message) is True
 
+
 def test_node_rejects_incorrect_message():
     node_a = Node("Receiver Node")
     message = Message(source_id="other", destination_id="different", payload="Wrong")
     assert node_a.receive_message(message) is False
+
 
 def test_create_network_from_config(tmp_path):
     """
@@ -77,6 +87,7 @@ def test_create_network_from_config(tmp_path):
     assert node_b in node_a.neighbors
     assert node_a.neighbors[node_b] == 25
 
+
 def test_find_shortest_path_no_path():
     network = Network()
     node_a, node_b = Node("A"), Node("B")
@@ -84,7 +95,8 @@ def test_find_shortest_path_no_path():
     network.add_node(node_b)
     path, latency = network.find_shortest_path(node_a.id, node_b.id)
     assert path is None
-    assert latency == float('inf')
+    assert latency == float("inf")
+
 
 def test_node_can_be_taken_offline_and_online():
     node = Node("Test Node")
@@ -93,6 +105,7 @@ def test_node_can_be_taken_offline_and_online():
     assert node.is_active is False
     node.bring_online()
     assert node.is_active is True
+
 
 def test_pathfinder_avoids_offline_nodes():
     network = Network()
@@ -109,6 +122,7 @@ def test_pathfinder_avoids_offline_nodes():
     assert latency == 500
     assert len(path) == 2
 
+
 def test_pathfinder_fails_if_no_alternate_path():
     network = Network()
     node_a, node_b, node_c = Node("A"), Node("B"), Node("C")
@@ -120,6 +134,7 @@ def test_pathfinder_fails_if_no_alternate_path():
     node_b.take_offline()
     path, latency = network.find_shortest_path(node_a.id, node_c.id)
     assert path is None
+
 
 def test_dijkstra_finds_fastest_path_not_shortest_hops():
     network = Network()
@@ -135,6 +150,7 @@ def test_dijkstra_finds_fastest_path_not_shortest_hops():
     assert latency == 20
     assert len(path) == 3
 
+
 def test_route_message_success():
     network = Network()
     node_a, node_b, node_c = Node("A"), Node("B"), Node("C")
@@ -145,6 +161,7 @@ def test_route_message_success():
     node_b.add_neighbor(node_c, 10)
     message = Message(node_a.id, node_c.id, "Test message")
     assert network.route_message(message) is True
+
 
 def test_route_message_failure_no_path():
     network = Network()
