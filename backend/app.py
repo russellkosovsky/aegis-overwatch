@@ -1,21 +1,14 @@
 # backend/app.py
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 from aegis_simulator.models import Network
 from aegis_simulator.reporter import Reporter
 
-# Initialize the Flask application
 app = Flask(__name__)
 
 # --- Global Simulation State ---
-# In a real application, this might be in a database, but for our
-# simulator, we can load it once and keep it in memory.
 print("--- Initializing Aegis Network ---")
-# We don't need a real reporter for the web UI yet
 network_reporter = Reporter() 
-# NOTE: This assumes you have a valid network_config.yml in the same
-# directory as where you run the flask app (the 'backend' folder).
-# You may need to copy it from your Aegis project.
 network = Network.create_from_config("network_config.yml", reporter=network_reporter)
 print("--- Network Ready ---")
 # ---
@@ -24,10 +17,7 @@ print("--- Network Ready ---")
 
 @app.route("/api/network/status")
 def get_network_status():
-    """
-    API endpoint to get the current status of all nodes and links.
-    Returns data in JSON format.
-    """
+    """API endpoint to get the current status of all nodes and links."""
     nodes_data = []
     for node in network.nodes.values():
         nodes_data.append({
@@ -39,21 +29,38 @@ def get_network_status():
                 for neighbor, latency in node.neighbors.items()
             ]
         })
-    
-    # Use jsonify to properly format the response as JSON
     return jsonify(sorted(nodes_data, key=lambda x: x['name']))
+
+# --- NEW: API Control Endpoints for PO-2 ---
+
+@app.route("/api/node/<node_name>/offline", methods=['POST'])
+def take_node_offline(node_name):
+    """API endpoint to take a specific node offline."""
+    node = network.get_node_by_name(node_name)
+    if not node:
+        return jsonify({"error": "Node not found"}), 404
+    
+    node.take_offline()
+    print(f"API: Took node '{node_name}' offline.")
+    return jsonify({"success": True, "node_name": node_name, "status": "offline"})
+
+@app.route("/api/node/<node_name>/online", methods=['POST'])
+def bring_node_online(node_name):
+    """API endpoint to bring a specific node online."""
+    node = network.get_node_by_name(node_name)
+    if not node:
+        return jsonify({"error": "Node not found"}), 404
+    
+    node.bring_online()
+    print(f"API: Brought node '{node_name}' online.")
+    return jsonify({"success": True, "node_name": node_name, "status": "online"})
 
 # --- Frontend Serving ---
 
 @app.route("/")
 def index():
-    """
-    Serves the main HTML page for the dashboard.
-    """
-    # Flask will automatically look for this file in the 'templates' folder.
+    """Serves the main HTML page for the dashboard."""
     return render_template("index.html")
 
 if __name__ == "__main__":
-    # Runs the Flask development server.
-    # debug=True allows the server to auto-reload when you save changes.
     app.run(debug=True)
